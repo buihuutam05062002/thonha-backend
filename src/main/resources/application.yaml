@@ -35,7 +35,7 @@ server:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:bXktc3VwZXItc2VjcmV0LWp3dC1rZXktY2hhbmdlLWluLXByb2R1Y3Rpb24tbWluLTI1Ni1iaXRzLXNlY3JldA==}
+    secret: ${JWT_SECRET:}
     access-minutes: ${JWT_ACCESS_MINUTES:30}
     refresh-days: ${JWT_REFRESH_DAYS:7}
 
@@ -60,8 +60,6 @@ logging:
   level:
     org.springframework.security: INFO
 
-
-
 sepay:
   bank-account: "0721074737777"
   bank-name: MBBank
@@ -69,5 +67,9 @@ sepay:
   api-key: ${SEPAY_API_KEY}
 
 gemini:
-  api-key: ${GEMINI_API_KEY}
-  model: ${GEMINI_MODEL}
+  api-key: ${GEMINI_API_KEY:}
+  model: ${GEMINI_MODEL:gemini-flash-latest}
+  fallback-models: ${GEMINI_FALLBACK_MODELS:}   # tên các model cách nhau bằng dấu phẩy
+  base-url: https://generativelanguage.googleapis.com/v1beta
+  timeout-seconds: 15
+  min-confidence: 0.5
