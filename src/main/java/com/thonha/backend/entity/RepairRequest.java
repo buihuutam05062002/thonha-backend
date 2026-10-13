@@ -77,6 +77,12 @@ public class RepairRequest {
     @Column(name = "final_price", precision = 15, scale = 2)
     BigDecimal finalPrice;
 
+    @Column(name = "completed_at")
+    LocalDateTime completedAt;
+    
+    @Column(name = "warranty_expires_at")
+    LocalDateTime warrantyExpiresAt;
+    
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;

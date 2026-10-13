@@ -15,6 +15,7 @@ public class CategoryResponse {
     String name;
     String description;
     String icon;
+    int defaultWarrantyDays;
     CategoryStatus status;
 
     public static CategoryResponse from(com.thonha.backend.entity.ServiceCategory c) {
@@ -24,6 +25,7 @@ public class CategoryResponse {
                 .name(c.getName())
                 .description(c.getDescription())
                 .icon(c.getIcon())
+                .defaultWarrantyDays(c.getDefaultWarrantyDays())
                 .status(c.getStatus())
                 .build();
     }

@@ -246,6 +246,10 @@ public class RepairRequestService {
             workerLocationService.clearTracking(request.getId());
         }
         if (target == RepairStatus.COMPLETED) {
+            LocalDateTime completedAt = LocalDateTime.now();
+            request.setCompletedAt(completedAt);
+            int warrantyDays = request.getCategory().getDefaultWarrantyDays();
+            request.setWarrantyExpiresAt(warrantyDays > 0 ? completedAt.plusDays(warrantyDays) : null);
             if (finalPrice != null) {
                 request.setFinalPrice(finalPrice);
             } else {

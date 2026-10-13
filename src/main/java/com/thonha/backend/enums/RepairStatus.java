@@ -8,6 +8,7 @@ public enum RepairStatus {
     MATCHING("Đang ghép thợ"),
     MATCHED("Đã ghép thợ"),
     ON_THE_WAY("Đang di chuyển"),
+    ARRIVED("Đã đến nơi"),
     IN_PROGRESS("Đang sửa chữa"),
     COMPLETED("Hoàn thành"),
     NOT_FOUND("Không tìm thấy thợ"),

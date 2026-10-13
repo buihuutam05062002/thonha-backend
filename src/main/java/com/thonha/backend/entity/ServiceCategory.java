@@ -31,6 +31,10 @@ public class ServiceCategory {
     @Column(length = 255)
     String icon;
 
+    @Column(name = "default_warranty_days", nullable = false, columnDefinition = "int default 0")
+    @Builder.Default
+    int defaultWarrantyDays = 30;
+    
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
