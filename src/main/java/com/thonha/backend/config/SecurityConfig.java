@@ -36,6 +36,8 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // Webhook SePay: không có JWT, controller tự xác thực bằng API key trong header Authorization
+                        .requestMatchers(HttpMethod.POST, "/api/v1/payments/sepay/webhook").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/service-categories/**").permitAll()
                         .requestMatchers("/api/v1/service-categories/**").hasRole("ADMIN")
                         .requestMatchers(

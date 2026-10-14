@@ -34,6 +34,7 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final StompAuthChannelInterceptor authInterceptor;
+    private final AllowedOrigins allowedOrigins;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
@@ -54,8 +55,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                // giữ đồng bộ với CorsConfig
-                .setAllowedOriginPatterns("http://localhost:*", "http://127.0.0.1:*");
+                // dùng chung danh sách với CorsConfig (xem AllowedOrigins)
+                .setAllowedOriginPatterns(allowedOrigins.asArray());
     }
 
     @Override

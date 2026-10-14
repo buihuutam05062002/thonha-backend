@@ -54,11 +54,16 @@ public class QuotationService {
                 .totalAmount(body.getTotalAmount())
                 .note(blankToNull(body.getNote()))
                 .build());
-        quotationRepository.transition(request.getId(), QuotationStatus.PENDING, QuotationStatus.EXPIRED, q.getId());
+        // Đọc dữ liệu cần dùng TRƯỚC khi gọi transition(): query đó xóa session nên các quan hệ lazy
+        // (worker -> user) không đọc được nữa.
+        String workerName = request.getWorker().getUser().getFullName();
+        Long customerId = request.getCustomer().getId();
+        Long requestId = request.getId();
+        QuotationResponse response = QuotationResponse.from(q, true);
 
-        notificationService.sendNewQuotation(request.getCustomer().getId(), request.getId(),
-                request.getWorker().getUser().getFullName());
-        return QuotationResponse.from(q, true);
+        quotationRepository.transition(requestId, QuotationStatus.PENDING, QuotationStatus.EXPIRED, q.getId());
+        notificationService.sendNewQuotation(customerId, requestId, workerName);
+        return response;
     }
 
     @Transactional(readOnly = true)

@@ -66,7 +66,7 @@ public class RepairRequestService {
 
         Address address = request.getAddressId() == null ? null :
                 addressRepository.findByIdAndUserId(request.getAddressId(), userId)
-                        .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "Không tìm thấy địa chỉ"));
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "Không tìm thấy địa chỉ"));
 
 
         BigDecimal latTmp = address != null && address.getLat() != null ? address.getLat()
@@ -192,6 +192,14 @@ public class RepairRequestService {
                     "Không thể hủy yêu cầu ở trạng thái này");
         }
 
+        // Đã chuyển khoản vào tài khoản nền tảng thì không tự hủy được (tránh mất tiền khách / lệch ví thợ)
+        if (paymentTransactionService.hasSuccessfulPayment(request.getId())) {
+            throw new com.thonha.backend.common.ApiException(
+                    com.thonha.backend.common.ErrorCode.INVALID_REQUEST,
+                    "Yêu cầu đã được thanh toán online nên không thể hủy. Vui lòng gửi khiếu nại để được hỗ trợ hoàn tiền");
+        }
+        paymentTransactionService.cancelPendingOnline(request.getId());
+
         boolean holdsWorkerSlot = request.getWorker() != null && (request.getStatus() == RepairStatus.MATCHED
                 || request.getStatus() == RepairStatus.ON_THE_WAY || request.getStatus() == RepairStatus.IN_PROGRESS);
 
@@ -246,12 +254,15 @@ public class RepairRequestService {
             workerLocationService.clearTracking(request.getId());
         }
         if (target == RepairStatus.COMPLETED) {
-            if (finalPrice != null) {
-                request.setFinalPrice(finalPrice);
-            } else {
-                quotationRepository.findFirstByRequestIdAndStatusOrderByIdDesc(
-                                request.getId(), com.thonha.backend.enums.QuotationStatus.ACCEPTED)
-                        .ifPresent(q -> request.setFinalPrice(q.getTotalAmount()));
+            // Khách đã thanh toán online: giá chốt chính là số tiền đã trả, thợ không được ghi đè
+            if (!paymentTransactionService.hasSuccessfulPayment(request.getId())) {
+                if (finalPrice != null) {
+                    request.setFinalPrice(finalPrice);
+                } else {
+                    quotationRepository.findFirstByRequestIdAndStatusOrderByIdDesc(
+                                    request.getId(), com.thonha.backend.enums.QuotationStatus.ACCEPTED)
+                            .ifPresent(q -> request.setFinalPrice(q.getTotalAmount()));
+                }
             }
 
             paymentTransactionService.settleCompletedRequest(request);
