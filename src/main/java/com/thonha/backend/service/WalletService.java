@@ -142,6 +142,24 @@ public class WalletService {
         post(wallet, WalletTransactionType.COMMISSION, commission.negate(), requestId, key, note, null);
     }
 
+    /**
+     * Ghi có phần thu nhập của thợ khi khách đã chuyển khoản vào tài khoản của nền tảng
+     * (tiền nằm ở nền tảng nên nền tảng "nợ" thợ phần còn lại sau hoa hồng). Mỗi đơn chỉ ghi một lần.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void creditEarning(Long workerProfileId, BigDecimal workerAmount, Long requestId,
+                              String requestCode, BigDecimal ratePercent) {
+        Wallet wallet = ensureWallet(workerProfileId);
+        String key = "ONLINE_PAYMENT:" + requestId;
+        if (transactionRepository.existsByIdempotencyKey(key)) {
+            log.warn("Đơn {} đã được ghi thu nhập thanh toán online trước đó, bỏ qua", requestId);
+            return;
+        }
+        wallet.credit(workerAmount);
+        String note = "Thu nhập đơn " + requestCode + " (chuyển khoản, đã trừ hoa hồng "
+                + ratePercent.stripTrailingZeros().toPlainString() + "%)";
+        post(wallet, WalletTransactionType.JOB_EARNING, workerAmount, requestId, key, note, null);
+    }
 
     @Transactional(readOnly = true)
     public void assertCanTakeJobs(Long workerProfileId) {

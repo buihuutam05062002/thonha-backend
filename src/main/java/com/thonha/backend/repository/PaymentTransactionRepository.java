@@ -1,6 +1,7 @@
 package com.thonha.backend.repository;
 
 import com.thonha.backend.entity.PaymentTransaction;
+import com.thonha.backend.enums.PaymentMethod;
 import com.thonha.backend.enums.TransactionStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +20,21 @@ import java.util.Optional;
 public interface PaymentTransactionRepository extends JpaRepository<PaymentTransaction, Long> {
 
     Optional<PaymentTransaction> findFirstByRequestIdAndStatus(Long requestId, TransactionStatus status);
+
+    boolean existsByRequestIdAndStatus(Long requestId, TransactionStatus status);
+
+    /** Giao dịch chuyển khoản mới nhất của đơn theo trạng thái (dùng để tái sử dụng mã QR đang chờ). */
+    Optional<PaymentTransaction> findFirstByRequestIdAndPaymentMethodAndStatusOrderByIdDesc(
+            Long requestId, PaymentMethod method, TransactionStatus status);
+
+    List<PaymentTransaction> findByRequestIdAndPaymentMethodAndStatus(
+            Long requestId, PaymentMethod method, TransactionStatus status);
+
+    /** Chống xử lý trùng một giao dịch của SePay (SePay có thể gọi webhook nhiều lần). */
+    boolean existsByGatewayTransactionCode(String gatewayTransactionCode);
+
+    @Query("select t.request.id from PaymentTransaction t where t.id = :id")
+    Optional<Long> findRequestId(@Param("id") Long id);
 
     @EntityGraph(attributePaths = {"request", "request.worker", "request.worker.user"})
     @Query("select t from PaymentTransaction t " +

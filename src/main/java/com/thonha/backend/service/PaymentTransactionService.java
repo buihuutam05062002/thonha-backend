@@ -50,6 +50,8 @@ public class PaymentTransactionService {
             throw new ApiException(ErrorCode.FINAL_PRICE_REQUIRED);
         }
 
+        // Đơn chốt bằng tiền mặt thì mã QR chuyển khoản còn chờ không còn hiệu lực (tránh trả hai lần)
+        cancelPendingOnline(request.getId());
         BigDecimal rate = commissionPolicyService.resolveRatePercent(request.getCategory().getId());
         CommissionCalculator.Result result = CommissionCalculator.calculate(price, rate);
 
@@ -68,6 +70,20 @@ public class PaymentTransactionService {
                     request.getId(), request.getRequestCode(), rate);
         }
         return tx;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasSuccessfulPayment(Long requestId) {
+        return paymentTransactionRepository.existsByRequestIdAndStatus(requestId, TransactionStatus.SUCCESS);
+    }
+
+    /** Đóng các mã QR chuyển khoản còn chờ của đơn (khi đơn bị hủy hoặc đã chốt thanh toán tiền mặt). */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void cancelPendingOnline(Long requestId) {
+        List<PaymentTransaction> pending = paymentTransactionRepository.findByRequestIdAndPaymentMethodAndStatus(
+                requestId, PaymentMethod.BANK_TRANSFER, TransactionStatus.PENDING_PAYMENT);
+        pending.forEach(t -> t.setStatus(TransactionStatus.CANCELLED));
+        paymentTransactionRepository.saveAll(pending);
     }
 
     @Transactional(readOnly = true)

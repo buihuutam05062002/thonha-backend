@@ -20,7 +20,13 @@ public class CorsConfig {
                 "http://localhost:*",
                 "http://127.0.0.1:*",
                 "http://192.168.1.5:5173:*",
-                "http://192.168.1.5:5173"
+                "http://192.168.1.5:5173",
+                "https://patio-yelp-retiree.ngrok-free.dev",
+                "http://192.168.1.2:5173:*",
+                "http://192.168.1.2:5173",
+                "https://localhost:*",
+                "https://127.0.0.1:*",
+                "https://192.168.1.2:*"
         ));
 
         config.setAllowedMethods(List.of(

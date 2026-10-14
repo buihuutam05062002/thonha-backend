@@ -129,6 +129,20 @@ public class NotificationService {
                 base("WORKER_ARRIVED", requestId, "Thợ đã đến nơi").build());
     }
 
+    public void sendPaymentSuccess(Long customerUserId, Long requestId, java.math.BigDecimal amount) {
+        push("/topic/user/" + customerUserId + "/requests",
+                base("PAYMENT_SUCCESS", requestId, "Đã nhận thanh toán " + money(amount)).build());
+    }
+
+    public void sendPaymentReceived(Long workerUserId, Long requestId, java.math.BigDecimal amount) {
+        push("/topic/user/" + workerUserId + "/matching",
+                base("PAYMENT_RECEIVED", requestId, "Khách đã chuyển khoản " + money(amount)).build());
+    }
+
+    private static String money(java.math.BigDecimal amount) {
+        return String.format(java.util.Locale.forLanguageTag("vi-VN"), "%,.0fđ", amount);
+    }
+
     public void sendJobCompleted(Long customerUserId, Long requestId) {
         push("/topic/user/" + customerUserId + "/requests",
                 base("JOB_COMPLETED", requestId, "Yêu cầu sửa chữa đã hoàn thành").build());

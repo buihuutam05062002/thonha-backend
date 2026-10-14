@@ -10,35 +10,48 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 
 /**
  * Client mỏng gọi Gemini REST API (generateContent). Chỉ lo việc gửi prompt + ảnh
  * và trả về JSON do model sinh ra; logic nghiệp vụ nằm ở IncidentClassifierService.
+ *
+ * Khác bản cũ:
+ *  - Thử lần lượt model chính rồi các model dự phòng (gemini.fallback-models) khi model lỗi/quá tải/không tồn tại.
+ *  - Ghi log rõ mã HTTP và nội dung lỗi Google trả về để biết vì sao AI không chạy.
+ *  - Không ép thinkingConfig cho mọi model (một số model không cho tắt thinking -> HTTP 400).
  */
 @Service
 @Slf4j
 public class GeminiService {
-
     /** Ảnh đính kèm đã đọc vào bộ nhớ */
     public record InlineImage(String mimeType, byte[] data) {}
 
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
     private final String apiKey;
-    private final String model;
+    private final List<String> models;
 
     public GeminiService(WebClient.Builder webClientBuilder, ObjectMapper objectMapper,
                          @Value("${gemini.api-key:}") String apiKey,
-                         @Value("${gemini.model}") String model) {
+                         @Value("${gemini.model:gemini-flash-latest}") String model,
+                         @Value("${gemini.fallback-models:}") String fallbackModels,
+                         @Value("${gemini.base-url:https://generativelanguage.googleapis.com/v1beta}") String baseUrl) {
         this.objectMapper = objectMapper;
-        this.apiKey = apiKey;
-        this.model = model;
+        this.apiKey = apiKey == null ? "" : apiKey.trim();
+        List<String> list = new ArrayList<>();
+        list.add(model.trim());
+        for (String m : fallbackModels.split(",")) {
+            if (!m.isBlank() && !list.contains(m.trim())) list.add(m.trim());
+        }
+        this.models = list;
         this.webClient = webClientBuilder
-                .baseUrl("https://generativelanguage.googleapis.com/v1beta")
+                .baseUrl(baseUrl)
                 .codecs(c -> c.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
                 .build();
     }
@@ -50,10 +63,27 @@ public class GeminiService {
      * @return JsonNode đã parse từ text model trả về
      */
     public JsonNode generateJson(String prompt, List<InlineImage> images, ObjectNode responseSchema) {
-        if (apiKey == null || apiKey.isBlank()) {
-            throw new ApiException(ErrorCode.CONFIGURATION_ERROR, "Chưa cấu hình GEMINI_API_KEY");
+        if (apiKey.isBlank()) {
+            throw new ApiException(ErrorCode.CONFIGURATION_ERROR,
+                    "Chưa cấu hình GEMINI_API_KEY ở backend nên chưa dùng được AI");
         }
 
+        ApiException last = null;
+        for (String model : models) {
+            try {
+                return callModel(model, prompt, images, responseSchema);
+            } catch (KeyProblem e) {
+                // Lỗi khóa API: model nào cũng sẽ lỗi như nhau, không thử tiếp
+                throw new ApiException(ErrorCode.CONFIGURATION_ERROR, e.getMessage());
+            } catch (ApiException e) {
+                last = e;
+                log.warn("Gemini model '{}' không dùng được ({}), thử model tiếp theo nếu có", model, e.getMessage());
+            }
+        }
+        throw last != null ? last : new ApiException(ErrorCode.EXTERNAL_SERVICE_ERROR, "AI không trả về kết quả");
+    }
+
+    private JsonNode callModel(String model, String prompt, List<InlineImage> images, ObjectNode responseSchema) {
         ObjectNode body = objectMapper.createObjectNode();
         ArrayNode parts = body.putArray("contents").addObject().putArray("parts");
         parts.addObject().put("text", prompt);
@@ -62,16 +92,19 @@ public class GeminiService {
             inline.put("mime_type", img.mimeType());
             inline.put("data", Base64.getEncoder().encodeToString(img.data()));
         }
-
         ObjectNode gen = body.putObject("generationConfig");
         gen.put("temperature", 0.1);
         gen.put("responseMimeType", "application/json");
         gen.set("responseSchema", responseSchema);
-        // Phân loại đơn giản, không cần "suy nghĩ" dài: giảm độ trễ và chi phí
-        gen.putObject("thinkingConfig").put("thinkingBudget", 0);
+        // Chỉ dòng 2.5 Flash mới cho phép tắt thinking bằng thinkingBudget=0 (giảm độ trễ).
+        // Các model khác (2.5 Pro, 3.x...) có thể trả HTTP 400 nếu ép tham số này nên không gửi.
+        if (model.contains("2.5-flash")) {
+            gen.putObject("thinkingConfig").put("thinkingBudget", 0);
+        }
 
+        String res;
         try {
-            String res = webClient.post()
+            res = webClient.post()
                     .uri("/models/{model}:generateContent", model)
                     .header("x-goog-api-key", apiKey)
                     .header("Content-Type", "application/json")
@@ -80,19 +113,73 @@ public class GeminiService {
                     .bodyToMono(String.class)
                     .timeout(Duration.ofSeconds(40))
                     .block();
+        } catch (WebClientResponseException e) {
+            throw translate(model, e);
+        } catch (Exception e) {
+            log.warn("Gemini '{}' lỗi kết nối/timeout: {}", model, e.toString());
+            throw new ApiException(ErrorCode.EXTERNAL_SERVICE_ERROR,
+                    "Không kết nối được tới dịch vụ AI (mạng hoặc quá thời gian chờ), bạn có thể chọn danh mục thủ công");
+        }
 
-            String text = objectMapper.readTree(res)
-                    .path("candidates").path(0).path("content").path("parts").path(0).path("text").asText("");
+        try {
+            JsonNode root = objectMapper.readTree(res);
+            String text = root.path("candidates").path(0).path("content").path("parts").path(0).path("text").asText("");
             if (text.isBlank()) {
+                String block = root.path("promptFeedback").path("blockReason").asText("");
+                log.warn("Gemini '{}' trả về rỗng. blockReason='{}', finishReason='{}'", model, block,
+                        root.path("candidates").path(0).path("finishReason").asText(""));
                 throw new ApiException(ErrorCode.EXTERNAL_SERVICE_ERROR, "AI không trả về kết quả");
             }
             return objectMapper.readTree(text);
         } catch (ApiException e) {
             throw e;
         } catch (Exception e) {
-            log.warn("Gemini call failed: {}", e.getMessage());
-            throw new ApiException(ErrorCode.EXTERNAL_SERVICE_ERROR,
-                    "Không phân tích được bằng AI lúc này, bạn có thể chọn danh mục thủ công");
+            log.warn("Gemini '{}' trả dữ liệu không đọc được: {}", model, e.toString());
+            throw new ApiException(ErrorCode.EXTERNAL_SERVICE_ERROR, "AI trả về dữ liệu không hợp lệ");
+        }
+    }
+
+    /** Đổi lỗi HTTP của Google thành thông báo dễ hiểu và ghi log đầy đủ (mã + nội dung) để dễ gỡ lỗi. */
+    private ApiException translate(String model, WebClientResponseException e) {
+        int status = e.getStatusCode().value();
+        String googleMsg = extractMessage(e.getResponseBodyAsString());
+        log.warn("Gemini '{}' HTTP {}: {}", model, status, googleMsg);
+
+        String lower = googleMsg.toLowerCase();
+        if (status == 401 || status == 403 || lower.contains("api key not valid") || lower.contains("api_key_invalid")
+                || lower.contains("permission denied")) {
+            throw new KeyProblem("GEMINI_API_KEY không hợp lệ hoặc chưa được bật Gemini API: " + googleMsg);
+        }
+        if (status == 429) {
+            return new ApiException(ErrorCode.EXTERNAL_SERVICE_ERROR,
+                    "AI đang hết hạn mức hoặc quá tải, bạn thử lại sau ít phút hoặc chọn danh mục thủ công");
+        }
+        if (status == 404) {
+            return new ApiException(ErrorCode.EXTERNAL_SERVICE_ERROR,
+                    "Model AI '" + model + "' không tồn tại, hãy kiểm tra GEMINI_MODEL");
+        }
+        if (status >= 500) {
+            return new ApiException(ErrorCode.EXTERNAL_SERVICE_ERROR,
+                    "Dịch vụ AI đang quá tải, bạn thử lại sau hoặc chọn danh mục thủ công");
+        }
+        return new ApiException(ErrorCode.EXTERNAL_SERVICE_ERROR,
+                "Không phân tích được bằng AI lúc này, bạn có thể chọn danh mục thủ công");
+    }
+
+    private String extractMessage(String body) {
+        try {
+            String m = objectMapper.readTree(body).path("error").path("message").asText("");
+            if (!m.isBlank()) return m;
+        } catch (Exception ignored) {
+            // body không phải JSON
+        }
+        return body == null ? "" : body.length() > 300 ? body.substring(0, 300) : body;
+    }
+
+    /** Lỗi khóa API: dừng ngay, không thử model dự phòng. */
+    private static class KeyProblem extends RuntimeException {
+        KeyProblem(String message) {
+            super(message);
         }
     }
 }

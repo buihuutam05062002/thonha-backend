@@ -32,12 +32,16 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+  address: 0.0.0.0
 
 app:
   jwt:
-    secret: ${JWT_SECRET:bXktc3VwZXItc2VjcmV0LWp3dC1rZXktY2hhbmdlLWluLXByb2R1Y3Rpb24tbWluLTI1Ni1iaXRzLXNlY3JldA==}
+    secret: ${JWT_SECRET:}
     access-minutes: ${JWT_ACCESS_MINUTES:30}
     refresh-days: ${JWT_REFRESH_DAYS:7}
+  cors:
+    # Origin trình duyệt được phép gọi backend (thêm vào mặc định localhost), cách nhau bằng dấu phẩy
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
 
 #  otp:
 #    ttl-minutes: ${OTP_TTL_MINUTES:5}
@@ -60,14 +64,20 @@ logging:
   level:
     org.springframework.security: INFO
 
-
-
 sepay:
-  bank-account: "0721074737777"
-  bank-name: MBBank
-  accountHolder: Bui Huu Tam
-  api-key: ${SEPAY_API_KEY}
+  # Phải là tài khoản đã liên kết với SePay (SePay chỉ báo biến động số dư của tài khoản đó)
+  bank-account: ${SEPAY_BANK_ACCOUNT:05362218001}
+  bank-name: ${SEPAY_BANK_NAME:TPBank}
+  accountHolder: ${SEPAY_ACCOUNT_HOLDER:LE DANG MINH TRIET}
+  # Khóa khai báo ở SePay (Webhooks > kiểu chứng thực API Key); để trống thì mọi webhook bị từ chối
+  api-key: ${SEPAY_API_KEY:}
+  # Tiền tố mã thanh toán, phải khớp "Cấu trúc mã thanh toán" trong SePay (vd TT -> TT15)
+  payment-prefix: ${SEPAY_PAYMENT_PREFIX:TT}
 
 gemini:
-  api-key: ${GEMINI_API_KEY}
-  model: ${GEMINI_MODEL}
+  api-key: ${GEMINI_API_KEY:}
+  model: ${GEMINI_MODEL:gemini-flash-latest}
+  fallback-models: ${GEMINI_FALLBACK_MODELS:}   # tên các model cách nhau bằng dấu phẩy
+  base-url: https://generativelanguage.googleapis.com/v1beta
+  timeout-seconds: 15
+  min-confidence: 0.5
