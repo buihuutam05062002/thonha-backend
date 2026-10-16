@@ -1,5 +1,6 @@
 package com.thonha.backend.dto.response;
 
+import com.thonha.backend.entity.Quotation;
 import com.thonha.backend.entity.RepairRequest;
 import com.thonha.backend.entity.WarrantyClaim;
 import lombok.*;
@@ -22,6 +23,9 @@ public class WarrantyClaimResponse {
     String status;
     Long requestId;
     String requestCode;
+    Long quotationId;
+    BigDecimal quotationAmount;
+    String warrantyLabel;
     String categoryName;
     String customerName;
     String customerPhone;
@@ -44,7 +48,10 @@ public class WarrantyClaimResponse {
 
     public static WarrantyClaimResponse from(WarrantyClaim claim) {
         RepairRequest request = claim.getRequest();
-        LocalDateTime expiresAt = request.getWarrantyExpiresAt();
+        Quotation quotation = claim.getQuotation();
+        LocalDateTime expiresAt = quotation != null && quotation.getWarrantyExpiresAt() != null
+                ? quotation.getWarrantyExpiresAt()
+                : request.getWarrantyExpiresAt();
         long daysLeft = expiresAt == null ? 0
                 : Math.max(0, ChronoUnit.DAYS.between(LocalDate.now(), expiresAt.toLocalDate()));
 
@@ -53,6 +60,9 @@ public class WarrantyClaimResponse {
                 .status(claim.getStatus().name())
                 .requestId(request.getId())
                 .requestCode(request.getRequestCode())
+                .quotationId(quotation == null ? null : quotation.getId())
+                .quotationAmount(quotation == null ? null : quotation.getTotalAmount())
+                .warrantyLabel(quotation == null ? null : QuotationResponse.labelOf(quotation.getWarrantyDays()))
                 .categoryName(request.getCategory().getName())
                 .customerName(request.getCustomer().getFullName())
                 .customerPhone(request.getCustomer().getPhoneNumber())

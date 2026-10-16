@@ -46,7 +46,6 @@ public class CategoryService {
                 .name(request.getName())
                 .description(request.getDescription())
                 .icon(request.getIcon())
-                .defaultWarrantyDays(request.getDefaultWarrantyDays() != null? request.getDefaultWarrantyDays() : 30)
                 .status(CategoryStatus.ACTIVE)
                 .build();
         return CategoryResponse.from(serviceCategoryRepository.save(category));
@@ -69,7 +68,6 @@ public class CategoryService {
         if (request.getName() != null) category.setName(request.getName());
         if (request.getDescription() != null) category.setDescription(request.getDescription());
         if (request.getIcon() != null) category.setIcon(request.getIcon());
-        if (request.getDefaultWarrantyDays() != null) category.setDefaultWarrantyDays(request.getDefaultWarrantyDays());
         if (request.getStatus() != null) category.setStatus(request.getStatus());
 
         return CategoryResponse.from(serviceCategoryRepository.save(category));

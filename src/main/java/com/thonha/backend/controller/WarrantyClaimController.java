@@ -31,9 +31,11 @@ public class WarrantyClaimController {
                 "Đã gửi yêu cầu bảo hành"
         ));
     }
-    
+
     @GetMapping("/my")
-    public ResponseEntity<ApiResponse<List<WarrantyClaimResponse>>> mine() {
-        return ResponseEntity.ok(ApiResponse.success(warrantyService.listMine(currentUser.requireUserId())));
+    public ResponseEntity<ApiResponse<List<WarrantyClaimResponse>>> mine(
+            @RequestParam(required = false) Long requestId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                warrantyService.listMine(currentUser.requireUserId(), requestId)));
     }
 }

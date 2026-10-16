@@ -7,10 +7,13 @@ import com.thonha.backend.dto.request.CompleteWarrantyRequest;
 import com.thonha.backend.dto.request.CreateWarrantyClaimRequest;
 import com.thonha.backend.dto.request.RejectWarrantyRequest;
 import com.thonha.backend.dto.response.WarrantyClaimResponse;
+import com.thonha.backend.entity.Quotation;
 import com.thonha.backend.entity.RepairRequest;
 import com.thonha.backend.entity.WarrantyClaim;
+import com.thonha.backend.enums.QuotationStatus;
 import com.thonha.backend.enums.RepairStatus;
 import com.thonha.backend.enums.WarrantyStatus;
+import com.thonha.backend.repository.QuotationRepository;
 import com.thonha.backend.repository.RepairRequestRepository;
 import com.thonha.backend.repository.WarrantyClaimRepository;
 import lombok.RequiredArgsConstructor;
@@ -46,9 +49,10 @@ public class WarrantyService {
     private final CloudinaryService cloudinaryService;
     private final AttachmentValidator attachmentValidator;
     private final WarrantyNotifier notifier;
+    private final QuotationRepository quotationRepository;
 
     // ===================== Customer =====================
-    
+
     @Transactional
     public WarrantyClaimResponse createClaim(Long customerId, CreateWarrantyClaimRequest data,
                                              List<MultipartFile> files) {
@@ -60,17 +64,27 @@ public class WarrantyService {
             throw new ApiException(ErrorCode.INVALID_STATUS_TRANSITION,
                     "Chỉ yêu cầu đã hoàn thành mới được bảo hành");
         }
-        if (request.getWarrantyExpiresAt() == null || LocalDateTime.now().isAfter(request.getWarrantyExpiresAt())) {
-            throw new ApiException(ErrorCode.WARRANTY_EXPIRED);
+
+        Quotation quotation = quotationRepository.findById(data.getQuotationId())
+                .filter(q -> q.getRequest().getId().equals(request.getId()))
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "Không tìm thấy báo giá của yêu cầu này"));
+        if (quotation.getStatus() != QuotationStatus.ACCEPTED) {
+            throw new ApiException(ErrorCode.INVALID_REQUEST, "Chỉ báo giá đã được chấp nhận mới có bảo hành");
         }
-        if (claimRepository.existsByRequestIdAndStatusIn(request.getId(), OPEN_STATUSES)) {
-            throw new ApiException(ErrorCode.WARRANTY_CLAIM_EXISTS);
+        if (quotation.getWarrantyExpiresAt() == null
+                || LocalDateTime.now().isAfter(quotation.getWarrantyExpiresAt())) {
+            throw new ApiException(ErrorCode.WARRANTY_EXPIRED, "Báo giá này đã hết hạn bảo hành hoặc không có bảo hành");
+        }
+        if (claimRepository.existsByQuotationId(quotation.getId())) {
+            throw new ApiException(ErrorCode.WARRANTY_CLAIM_EXISTS,
+                    "Hạng mục này đã được gửi yêu cầu bảo hành, mỗi hạng mục chỉ được bảo hành 1 lần");
         }
 
         List<AttachmentValidator.Validated> validated = validateImages(files);
 
         WarrantyClaim claim = WarrantyClaim.builder()
                 .request(request)
+                .quotation(quotation)
                 .worker(request.getWorker())
                 .description(data.getDescription().trim())
                 .build();
@@ -90,9 +104,11 @@ public class WarrantyService {
     }
 
     @Transactional(readOnly = true)
-    public List<WarrantyClaimResponse> listMine(Long customerId) {
-        return claimRepository.findByRequestCustomerIdOrderByCreatedAtDesc(customerId).stream()
-                .map(WarrantyClaimResponse::from).toList();
+    public List<WarrantyClaimResponse> listMine(Long customerId, Long requestId) {
+        List<WarrantyClaim> claims = requestId == null
+                ? claimRepository.findByRequestCustomerIdOrderByCreatedAtDesc(customerId)
+                : claimRepository.findByRequestCustomerIdAndRequestIdOrderByCreatedAtDesc(customerId, requestId);
+        return claims.stream().map(WarrantyClaimResponse::from).toList();
     }
 
     // ===================== Worker =====================

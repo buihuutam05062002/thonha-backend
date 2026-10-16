@@ -25,6 +25,8 @@ public interface WarrantyClaimRepository extends JpaRepository<WarrantyClaim, Lo
     long countByWorkerUserIdAndStatusIn(Long userId, Collection<WarrantyStatus> statuses);
     
     List<WarrantyClaim> findByRequestCustomerIdOrderByCreatedAtDesc(Long customerId);
+
+    boolean existsByQuotationIdAndStatusIn(Long quotationId, Collection<WarrantyStatus> statuses);
     
     @Query("""
                 select c from WarrantyClaim c
@@ -37,4 +39,8 @@ public interface WarrantyClaimRepository extends JpaRepository<WarrantyClaim, Lo
     List<WarrantyClaim> search(@Param("userId")Long userId,
                                @Param("statuses")Collection<WarrantyStatus> statuses,
                                @Param("keyword")String keyword);
+
+    boolean existsByQuotationId(Long quotationId);
+
+    List<WarrantyClaim> findByRequestCustomerIdAndRequestIdOrderByCreatedAtDesc(Long customerId, Long requestId);
 }

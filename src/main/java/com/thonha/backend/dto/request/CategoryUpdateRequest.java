@@ -21,10 +21,6 @@ public class CategoryUpdateRequest {
 
     @Size(max = 255, message = "Icon tối đa 255 ký tự")
     String icon;
-
-    @Min(value = 0, message = "Số ngày bảo hành không được âm")
-    @Max(value = 3650, message = "Số ngày bảo hành tối đa 3650 ngày")
-    private Integer defaultWarrantyDays;
     
     CategoryStatus status;
 }

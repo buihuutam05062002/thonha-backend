@@ -25,6 +25,7 @@ public interface QuotationRepository extends JpaRepository<Quotation, Long> {
 
     Optional<Quotation> findFirstByRequestIdAndStatusOrderByIdDesc(Long requestId, QuotationStatus status);
 
+    List<Quotation> findByRequestIdAndStatus(Long requestId, QuotationStatus status);
     /** Chuyển các báo giá đang ở trạng thái `from` của yêu cầu sang `to` (trừ báo giá `exceptId`). */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update Quotation q set q.status = :to where q.request.id = :requestId and q.status = :from and q.id <> :exceptId")

@@ -47,6 +47,12 @@ public class Quotation {
     @Builder.Default
     QuotationStatus status = QuotationStatus.PENDING;
 
+    @Column(name = "warranty_days")
+    Integer warrantyDays;
+
+    @Column(name = "warranty_expires_at")
+    LocalDateTime warrantyExpiresAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;

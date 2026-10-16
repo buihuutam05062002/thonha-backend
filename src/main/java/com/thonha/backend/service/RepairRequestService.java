@@ -266,6 +266,7 @@ public class RepairRequestService {
             }
 
             paymentTransactionService.settleCompletedRequest(request);
+            stampWarranty(request, LocalDateTime.now());
         }
         request.setUpdatedAt(LocalDateTime.now());
         repairRequestRepository.save(request);
@@ -284,7 +285,21 @@ public class RepairRequestService {
         return ApiResponse.success(RepairRequestResponse.from(request), "Cập nhật trạng thái thành công");
     }
 
-
+    private void stampWarranty(RepairRequest request, LocalDateTime completedAt) {
+        request.setCompletedAt(completedAt);
+        LocalDateTime latest = null;
+        for (Quotation q : quotationRepository.findByRequestIdAndStatus(
+                request.getId(), com.thonha.backend.enums.QuotationStatus.ACCEPTED)) {
+            int days = q.getWarrantyDays() == null ? 0 : q.getWarrantyDays();
+            LocalDateTime expires = days > 0 ? completedAt.plusDays(days) : null;
+            q.setWarrantyExpiresAt(expires);
+            if (expires != null && (latest == null || expires.isAfter(latest))) {
+                latest = expires;
+            }
+        }
+        request.setWarrantyExpiresAt(latest);
+    }
+    
     @Transactional(readOnly = true)
     public ApiResponse<com.thonha.backend.dto.response.WorkerLocationResponse> getWorkerLocation(Long customerUserId, Long requestId) {
         RepairRequest request = repairRequestRepository.findByIdAndCustomerId(requestId, customerUserId)

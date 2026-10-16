@@ -9,7 +9,7 @@ spring:
     hibernate:
       ddl-auto: update
     open-in-view: false
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
@@ -81,3 +81,11 @@ gemini:
   base-url: https://generativelanguage.googleapis.com/v1beta
   timeout-seconds: 15
   min-confidence: 0.5
+  thinking-level: ${low}
+chatbot:
+  max-history-turns: 10
+  max-images: 3
+  max-image-bytes: 5242880
+  user-limit-per-minute: 12
+  guest-limit-per-minute: 6
+  payment-methods: ${CHATBOT_PAYMENT_METHODS:tiền mặt hoặc chuyển khoản, thanh toán trực tiếp cho thợ sau khi hoàn thành}
