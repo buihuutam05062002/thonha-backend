@@ -10,6 +10,8 @@ import com.thonha.backend.entity.RepairRequest;
 import com.thonha.backend.enums.PaymentMethod;
 import com.thonha.backend.enums.TransactionStatus;
 import com.thonha.backend.repository.PaymentTransactionRepository;
+import com.thonha.backend.repository.RepairRequestRepository;
+import com.thonha.backend.dto.response.PaymentResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +36,7 @@ public class PaymentTransactionService {
     private final PaymentTransactionRepository paymentTransactionRepository;
     private final CommissionPolicyService commissionPolicyService;
     private final WalletService walletService;
+    private final RepairRequestRepository requestRepository;
 
     @Transactional(propagation = Propagation.MANDATORY)
     public PaymentTransaction settleCompletedRequest(RepairRequest request) {
@@ -70,6 +73,21 @@ public class PaymentTransactionService {
                     request.getId(), request.getRequestCode(), rate);
         }
         return tx;
+    }
+
+    /**
+     * Khách xem đơn của mình đã được ghi nhận thanh toán chưa (null nếu chưa). Khách thanh toán trực tiếp cho
+     * thợ nên không còn mã QR phía khách; giao dịch chỉ xuất hiện sau khi thợ chốt giá và hoàn thành đơn.
+     */
+    @Transactional(readOnly = true)
+    public PaymentResponse getForRequest(Long customerUserId, Long requestId) {
+        requestRepository.findByIdAndCustomerId(requestId, customerUserId)
+                .orElseThrow(() -> new ApiException(ErrorCode.REQUEST_NOT_FOUND));
+        return paymentTransactionRepository.findFirstByRequestIdAndStatus(requestId, TransactionStatus.SUCCESS)
+                .map(tx -> new PaymentResponse(tx.getId(), requestId, tx.getAmount(), tx.getStatus(),
+                        tx.getStatus().getDescription(), tx.getPaymentMethod(),
+                        null, null, null, null, null, tx.getCreatedAt()))
+                .orElse(null);
     }
 
     @Transactional(readOnly = true)

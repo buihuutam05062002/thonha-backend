@@ -236,8 +236,7 @@ public class RepairRequestService {
 
 
     @Transactional
-    public ApiResponse<RepairRequestResponse> updateStatusByWorker(Long workerUserId, Long requestId, RepairStatus target,
-                                                                   BigDecimal finalPrice) {
+    public ApiResponse<RepairRequestResponse> updateStatusByWorker(Long workerUserId, Long requestId, RepairStatus target) {
         RepairRequest request = repairRequestRepository.findByIdForUpdate(requestId)
                 .orElseThrow(() -> new ApiException(ErrorCode.REQUEST_NOT_FOUND));
 
@@ -249,22 +248,29 @@ public class RepairRequestService {
                     "Không thể chuyển từ \"" + request.getStatus().getDescription() + "\" sang \"" + target.getDescription() + "\"");
         }
 
+        // Giá chốt = tổng các báo giá khách đã chấp nhận. Kiểm tra trước khi đổi trạng thái.
+        BigDecimal total = null;
+        if (target == RepairStatus.COMPLETED && !paymentTransactionService.hasSuccessfulPayment(request.getId())) {
+            total = java.util.Optional.ofNullable(quotationRepository.sumAmount(
+                    request.getId(), com.thonha.backend.enums.QuotationStatus.ACCEPTED)).orElse(BigDecimal.ZERO);
+            if (total.signum() <= 0) {
+                throw new ApiException(ErrorCode.FINAL_PRICE_REQUIRED,
+                        "Cần ít nhất một báo giá được khách chấp nhận trước khi hoàn thành đơn");
+            }
+        }
+
         request.setStatus(target);
         if (target != RepairStatus.ON_THE_WAY) {
             workerLocationService.clearTracking(request.getId());
         }
         if (target == RepairStatus.COMPLETED) {
-            // Khách đã thanh toán online: giá chốt chính là số tiền đã trả, thợ không được ghi đè
-            if (!paymentTransactionService.hasSuccessfulPayment(request.getId())) {
-                if (finalPrice != null) {
-                    request.setFinalPrice(finalPrice);
-                } else {
-                    quotationRepository.findFirstByRequestIdAndStatusOrderByIdDesc(
-                                    request.getId(), com.thonha.backend.enums.QuotationStatus.ACCEPTED)
-                            .ifPresent(q -> request.setFinalPrice(q.getTotalAmount()));
-                }
+            if (total != null) {
+                request.setFinalPrice(total);
             }
-
+            // Báo giá khách chưa phản hồi không được tính
+            quotationRepository.transition(request.getId(),
+                    com.thonha.backend.enums.QuotationStatus.PENDING,
+                    com.thonha.backend.enums.QuotationStatus.EXPIRED);
             paymentTransactionService.settleCompletedRequest(request);
         }
         request.setUpdatedAt(LocalDateTime.now());

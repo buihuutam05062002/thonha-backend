@@ -43,7 +43,7 @@ public class WorkerRequestController {
             @PathVariable Long id,
             @Valid @RequestBody UpdateRequestStatusRequest body) {
         return ResponseEntity.ok(
-                repairRequestService.updateStatusByWorker(currentUserProvider.requireUserId(), id, body.getStatus(), body.getFinalPrice()));
+                repairRequestService.updateStatusByWorker(currentUserProvider.requireUserId(), id, body.getStatus()));
     }
 
     @GetMapping("/{id}")

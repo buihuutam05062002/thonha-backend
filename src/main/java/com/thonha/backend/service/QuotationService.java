@@ -38,7 +38,7 @@ public class QuotationService {
 
     @Transactional
     public QuotationResponse create(Long workerUserId, CreateQuotationRequest body) {
-        // khóa dòng yêu cầu: tránh 2 báo giá chờ cùng lúc, và tránh gửi giữa lúc khách hủy / thợ hoàn thành
+        // khóa dòng yêu cầu: tránh gửi báo giá giữa lúc khách hủy / thợ hoàn thành
         RepairRequest request = repairRequestRepository.findByIdForUpdate(body.getRequestId())
                 .orElseThrow(() -> new ApiException(ErrorCode.REQUEST_NOT_FOUND));
         if (request.getWorker() == null || !request.getWorker().getUser().getId().equals(workerUserId)) {
@@ -54,16 +54,10 @@ public class QuotationService {
                 .totalAmount(body.getTotalAmount())
                 .note(blankToNull(body.getNote()))
                 .build());
-        // Đọc dữ liệu cần dùng TRƯỚC khi gọi transition(): query đó xóa session nên các quan hệ lazy
-        // (worker -> user) không đọc được nữa.
-        String workerName = request.getWorker().getUser().getFullName();
-        Long customerId = request.getCustomer().getId();
-        Long requestId = request.getId();
-        QuotationResponse response = QuotationResponse.from(q, true);
 
-        quotationRepository.transition(requestId, QuotationStatus.PENDING, QuotationStatus.EXPIRED, q.getId());
-        notificationService.sendNewQuotation(customerId, requestId, workerName);
-        return response;
+        notificationService.sendNewQuotation(request.getCustomer().getId(), request.getId(),
+                request.getWorker().getUser().getFullName());
+        return QuotationResponse.from(q, true);
     }
 
     @Transactional(readOnly = true)
@@ -101,9 +95,6 @@ public class QuotationService {
 
         fresh.setStatus(accept ? QuotationStatus.ACCEPTED : QuotationStatus.REJECTED);
         quotationRepository.saveAndFlush(fresh);
-        if (accept) {
-            quotationRepository.transition(request.getId(), QuotationStatus.ACCEPTED, QuotationStatus.EXPIRED, fresh.getId());
-        }
 
         notificationService.sendQuotationResponded(request.getWorker().getUser().getId(), request.getId(), accept);
         return QuotationResponse.from(fresh, false);

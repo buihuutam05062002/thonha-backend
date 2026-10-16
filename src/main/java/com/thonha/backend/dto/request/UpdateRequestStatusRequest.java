@@ -19,8 +19,4 @@ public class UpdateRequestStatusRequest {
 
     @NotNull(message = "Thiếu trạng thái mới")
      RepairStatus status;
-
-    @DecimalMin(value = "0", message = "Giá không được âm")
-    @Digits(integer = 10, fraction = 2, message = "Giá không hợp lệ")
-     BigDecimal finalPrice;
 }
