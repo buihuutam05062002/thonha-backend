@@ -21,13 +21,14 @@ public class AllowedOrigins {
     public AllowedOrigins(@Value("${app.cors.allowed-origins:}") String[] extra) {
         List<String> all = new ArrayList<>(List.of(
                 "http://localhost:*",
+                "https://localhost:*",
                 "http://127.0.0.1:*",
-                "http://192.168.1.5:5173",
-                "http://localhost:*",
-                "http://127.0.0.1:*",
-                "http://192.168.1.2:8080",
-                "http://192.168.1.2:*"
-
+                "https://127.0.0.1:*",
+                "http://192.168.1.2:*",
+                "https://192.168.1.2:*",
+                "http://192.168.1.5:*",
+                "https://192.168.1.5:*",
+                "https://patio-yelp-retiree.ngrok-free.dev"
         )
 
 

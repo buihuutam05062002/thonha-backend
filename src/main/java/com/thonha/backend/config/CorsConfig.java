@@ -1,5 +1,6 @@
 package com.thonha.backend.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
@@ -9,25 +10,17 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 @Configuration
+@RequiredArgsConstructor
 public class CorsConfig {
+
+    private final AllowedOrigins allowedOrigins;
 
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
 
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOriginPatterns(List.of(
-                "http://localhost:*",
-                "http://127.0.0.1:*",
-                "http://192.168.1.5:5173:*",
-                "http://192.168.1.5:5173",
-                "https://patio-yelp-retiree.ngrok-free.dev",
-                "http://192.168.1.2:5173:*",
-                "http://192.168.1.2:5173",
-                "https://localhost:*",
-                "https://127.0.0.1:*",
-                "https://192.168.1.2:*"
-        ));
+        config.setAllowedOriginPatterns(allowedOrigins.patterns());
 
         config.setAllowedMethods(List.of(
                 "GET",

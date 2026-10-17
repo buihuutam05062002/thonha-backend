@@ -39,6 +39,11 @@ public class WarrantyClaim {
     @JoinColumn(name = "worker_id", nullable = false)
     @ToString.Exclude
     WorkerProfile worker;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "quotation_id")
+    @ToString.Exclude
+    Quotation quotation;
     
     @Column(nullable = false, columnDefinition = "text")
     String description;

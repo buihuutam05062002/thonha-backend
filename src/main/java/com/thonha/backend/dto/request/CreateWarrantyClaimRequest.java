@@ -13,6 +13,9 @@ import lombok.NoArgsConstructor;
 public class CreateWarrantyClaimRequest {
     @NotNull(message = "Thiếu mã yêu cầu")
     private Long requestId;
+
+    @NotNull(message = "Vui lòng chọn hạng mục (báo giá) cần bảo hành")
+    private Long quotationId;
     
     @NotBlank(message = "Vui lòng mô tả sự cố")
     @Size(min = 10,max = 1000,message = "Mô tả cần 10 đến 1000 ký tự")
