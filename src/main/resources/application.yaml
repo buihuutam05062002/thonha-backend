@@ -71,8 +71,9 @@ sepay:
   accountHolder: ${SEPAY_ACCOUNT_HOLDER:LE DANG MINH TRIET}
   # Khóa khai báo ở SePay (Webhooks > kiểu chứng thực API Key); để trống thì mọi webhook bị từ chối
   api-key: ${SEPAY_API_KEY:}
-  # Tiền tố mã thanh toán, phải khớp "Cấu trúc mã thanh toán" trong SePay (vd TT -> TT15)
-  payment-prefix: ${SEPAY_PAYMENT_PREFIX:TT}
+  # Tiền tố mã nạp ví của thợ (vd NAP -> NAP15). Nên đặt cùng tiền tố này ở "Cấu trúc mã thanh toán" trong SePay;
+  # backend vẫn tự tìm mã trong nội dung chuyển khoản nên không phụ thuộc hoàn toàn vào cấu hình đó.
+  topup-prefix: ${SEPAY_TOPUP_PREFIX:NAP}
 
 gemini:
   api-key: ${GEMINI_API_KEY:}

@@ -13,11 +13,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Tích hợp SePay (chuyển khoản QR + webhook báo biến động số dư).
+ * Tích hợp SePay (chuyển khoản QR + webhook báo biến động số dư) để thợ nạp tiền vào ví.
  * <p>
- * Mỗi giao dịch chờ thanh toán có một mã riêng = {@code payment-prefix} + id giao dịch (vd "TT15").
- * Khách ghi mã này vào nội dung chuyển khoản; SePay gọi webhook về backend kèm nội dung đó và backend
- * đối chiếu lại. Tiền tố phải khớp với "Cấu trúc mã thanh toán" cấu hình trong trang quản trị SePay.
+ * Mỗi lệnh nạp chờ thanh toán có một mã riêng = {@code topup-prefix} + id lệnh (vd "NAP15"). Thợ ghi mã này vào
+ * nội dung chuyển khoản; SePay gọi webhook về backend kèm nội dung đó và backend đối chiếu để cộng tiền vào ví.
  */
 @Service
 public class SePayService {
@@ -35,8 +34,9 @@ public class SePayService {
     @Value("${sepay.api-key:}")
     String apiKey;
 
-    @Value("${sepay.payment-prefix:TT}")
-    String paymentPrefix;
+    /** Tiền tố mã nạp ví của thợ (vd "NAP" -> "NAP15"). */
+    @Value("${sepay.topup-prefix:NAP}")
+    String topUpPrefix;
 
     public String getBankAccount() {
         return bankAccount;
@@ -50,17 +50,17 @@ public class SePayService {
         return accountHolder;
     }
 
-    /** Mã thanh toán khách phải ghi vào nội dung chuyển khoản. */
-    public String paymentCode(Long paymentId) {
-        return paymentPrefix + paymentId;
+    /** Mã nạp ví thợ phải ghi vào nội dung chuyển khoản. */
+    public String topUpCode(Long topUpId) {
+        return topUpPrefix + topUpId;
     }
 
     /**
-     * Lấy id giao dịch từ mã SePay đã nhận diện (`code`) hoặc từ nội dung chuyển khoản (ngân hàng có thể
+     * Lấy id lệnh nạp ví từ mã SePay đã nhận diện (`code`) hoặc từ nội dung chuyển khoản (ngân hàng có thể
      * thêm chữ vào trước/sau, nên tìm theo tiền tố + chuỗi số). Không phân biệt hoa thường.
      */
-    public Optional<Long> extractPaymentId(String code, String content) {
-        Pattern pattern = Pattern.compile(Pattern.quote(paymentPrefix) + "(\\d{1,15})", Pattern.CASE_INSENSITIVE);
+    public Optional<Long> extractTopUpId(String code, String content) {
+        Pattern pattern = Pattern.compile(Pattern.quote(topUpPrefix) + "(\\d{1,15})", Pattern.CASE_INSENSITIVE);
         for (String text : new String[]{code, content}) {
             if (text == null || text.isBlank()) {
                 continue;
