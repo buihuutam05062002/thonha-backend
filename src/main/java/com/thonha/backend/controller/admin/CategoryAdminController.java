@@ -11,6 +11,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import com.thonha.backend.dto.response.AdminCategoryResponse;
+
 @RestController
 @RequestMapping("/api/v1/admin/service-categories")
 public class CategoryAdminController {
@@ -18,6 +23,11 @@ public class CategoryAdminController {
 
     public CategoryAdminController(CategoryService categoryService) {
         this.categoryService = categoryService;
+    }
+
+    @GetMapping
+    public Page<AdminCategoryResponse> list(@PageableDefault(size = 10, sort = "id") Pageable pageable) {
+        return categoryService.getAllForAdmin(pageable);
     }
 
     @PostMapping

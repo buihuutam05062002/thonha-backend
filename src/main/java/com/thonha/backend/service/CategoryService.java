@@ -5,19 +5,43 @@ import com.thonha.backend.dto.request.CategoryUpdateRequest;
 import com.thonha.backend.dto.response.CategoryResponse;
 import com.thonha.backend.enums.CategoryStatus;
 import com.thonha.backend.entity.ServiceCategory;
+import com.thonha.backend.repository.RepairRequestRepository;
 import com.thonha.backend.repository.ServiceCategoryRepository;
+import com.thonha.backend.dto.response.AdminCategoryResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
 public class CategoryService {
     private final ServiceCategoryRepository serviceCategoryRepository;
 
-    public CategoryService(ServiceCategoryRepository serviceCategoryRepository) {
+    private final RepairRequestRepository repairRequestRepository;
+
+    public CategoryService(ServiceCategoryRepository serviceCategoryRepository,
+                           RepairRequestRepository repairRequestRepository) {
         this.serviceCategoryRepository = serviceCategoryRepository;
+        this.repairRequestRepository = repairRequestRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AdminCategoryResponse> getAllForAdmin(Pageable pageable) {
+        Page<ServiceCategory> page = serviceCategoryRepository.findAll(pageable);
+        Map<Long, Long> counts = new HashMap<>();
+        if (page.hasContent()) {
+            List<Long> ids = page.getContent().stream().map(ServiceCategory::getId).toList();
+            for (Object[] row : repairRequestRepository.countByCategoryIds(ids)) {
+                counts.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
+            }
+        }
+        return page.map(c -> new AdminCategoryResponse(c.getId(), c.getName(), c.getDescription(), c.getIcon(),
+                c.getStatus(), counts.getOrDefault(c.getId(), 0L)));
     }
 
     public List<CategoryResponse> getAll() {

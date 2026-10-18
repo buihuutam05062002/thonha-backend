@@ -2,10 +2,12 @@ package com.thonha.backend.controller;
 
 import com.thonha.backend.common.ApiResponse;
 import com.thonha.backend.dto.request.CreateRepairRequest;
+import com.thonha.backend.dto.response.CustomerSummaryResponse;
 import com.thonha.backend.dto.response.RepairRequestResponse;
 import com.thonha.backend.enums.MatchingResult;
 import com.thonha.backend.enums.RepairStatus;
 import com.thonha.backend.security.CurrentUserProvider;
+import com.thonha.backend.service.CustomerSummaryService;
 import com.thonha.backend.service.MatchingService;
 import com.thonha.backend.service.RepairRequestService;
 import jakarta.validation.Valid;
@@ -25,13 +27,16 @@ public class RepairRequestController {
     private final RepairRequestService repairRequestService;
     private final CurrentUserProvider currentUserProvider;
     private final MatchingService matchingService;
+    private final CustomerSummaryService summaryService;
 
     public RepairRequestController(RepairRequestService repairRequestService,
                                    CurrentUserProvider currentUserProvider,
-                                   MatchingService matchingService) {
+                                   MatchingService matchingService,
+                                   CustomerSummaryService summaryService) {
         this.repairRequestService = repairRequestService;
         this.currentUserProvider = currentUserProvider;
         this.matchingService = matchingService;
+        this.summaryService = summaryService;
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -89,6 +94,14 @@ public class RepairRequestController {
         matchingService.handleWorkerResponse(request.getMatchingLogId(), currentUserProvider.requireUserId(), request.getResult(), request.getNote());
         return ResponseEntity.ok(ApiResponse.success(null));
     }
+    @GetMapping("/my/summary")
+    public ResponseEntity<ApiResponse<CustomerSummaryResponse>> mySummary() {
+        return ResponseEntity.ok(ApiResponse.success(
+                summaryService.summarize(currentUserProvider.requireUserId())));
+    }
+
+
+
 
     @lombok.Data
     public static class MatchingResponseRequest {

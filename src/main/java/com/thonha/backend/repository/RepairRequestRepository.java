@@ -3,6 +3,7 @@ package com.thonha.backend.repository;
 import com.thonha.backend.entity.RepairRequest;
 import com.thonha.backend.enums.RepairStatus;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.Optional;
 
@@ -75,11 +76,13 @@ public interface RepairRequestRepository extends JpaRepository<RepairRequest, Lo
                                         @Param("to") java.time.LocalDateTime to,
                                         Pageable pageable);
 
+    @Query("select r.category.id, count(r) from RepairRequest r where r.category.id in :ids group by r.category.id")
+    List<Object[]> countByCategoryIds(@Param("ids") java.util.Collection<Long> ids);
+
     @Query("select r.createdAt from RepairRequest r where r.createdAt >= :from and r.createdAt < :to")
     List<java.time.LocalDateTime> findCreatedAtBetween(@Param("from") java.time.LocalDateTime from,
                                                       @Param("to") java.time.LocalDateTime to);
 
-    // --- theo dõi vị trí, chat: kiểm tra quyền truy cập theo từng yêu cầu ---
     boolean existsByIdAndCustomerId(Long id, Long customerId);
 
     boolean existsByIdAndWorker_User_Id(Long id, Long userId);
@@ -87,4 +90,14 @@ public interface RepairRequestRepository extends JpaRepository<RepairRequest, Lo
     @Query("select r from RepairRequest r join fetch r.category where r.worker.user.id = :userId and r.status in :statuses order by r.createdAt desc")
     List<RepairRequest> findActiveByWorkerUser(@Param("userId") Long userId,
                                                @Param("statuses") java.util.Collection<RepairStatus> statuses);
+
+
+    @Query("select r from RepairRequest r join fetch r.category left join fetch r.worker w left join fetch w.user " +
+            "where r.customer.id = :userId and r.status = com.thonha.backend.enums.RepairStatus.COMPLETED " +
+            "and r.completedAt >= :since " +
+            "and not exists (select 1 from Review rv where rv.request.id = r.id) " +
+            "order by r.completedAt desc")
+    List<RepairRequest> findAwaitingReview(@Param("userId") Long userId,
+                                           @Param("since") LocalDateTime since,
+                                           Pageable pageable);
 }
