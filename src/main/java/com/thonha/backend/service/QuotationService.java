@@ -29,6 +29,9 @@ public class QuotationService {
     
     private static final Set<WarrantyStatus> OPEN_CLAIMS =
             EnumSet.of(WarrantyStatus.PENDING, WarrantyStatus.PROCESSING);
+
+    private static final Set<WarrantyStatus> CLAIM_USED_STATUSES =
+            EnumSet.of(WarrantyStatus.PENDING, WarrantyStatus.PROCESSING, WarrantyStatus.COMPLETED);
     
     private final QuotationRepository quotationRepository;
     private final RepairRequestRepository repairRequestRepository;
@@ -92,7 +95,7 @@ public class QuotationService {
                 .map(q -> {
                     boolean actionable = isCustomer && active && q.getStatus() == QuotationStatus.PENDING;
                     boolean used = q.getStatus() == QuotationStatus.ACCEPTED
-                            && warrantyClaimRepository.existsByQuotationId(q.getId());
+                            && warrantyClaimRepository.existsByQuotationIdAndStatusIn(q.getId(), CLAIM_USED_STATUSES);
                     boolean claimable = isCustomer && completed
                             && q.getStatus() == QuotationStatus.ACCEPTED
                             && q.getWarrantyExpiresAt() != null

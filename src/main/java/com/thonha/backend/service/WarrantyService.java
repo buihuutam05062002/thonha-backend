@@ -39,6 +39,8 @@ public class WarrantyService {
     private static final Set<String> TIME_SLOTS = Set.of("08:00", "10:00", "14:00", "16:00");
     private static final Set<WarrantyStatus> OPEN_STATUSES =
             EnumSet.of(WarrantyStatus.PENDING, WarrantyStatus.PROCESSING);
+    private static final Set<WarrantyStatus> CLAIM_USED_STATUSES =
+            EnumSet.of(WarrantyStatus.PENDING, WarrantyStatus.PROCESSING, WarrantyStatus.COMPLETED);
     private static final Map<String, Set<WarrantyStatus>> TABS = Map.of(
             "PENDING", EnumSet.of(WarrantyStatus.PENDING),
             "PROCESSING", EnumSet.of(WarrantyStatus.PROCESSING),
@@ -75,7 +77,7 @@ public class WarrantyService {
                 || LocalDateTime.now().isAfter(quotation.getWarrantyExpiresAt())) {
             throw new ApiException(ErrorCode.WARRANTY_EXPIRED, "Báo giá này đã hết hạn bảo hành hoặc không có bảo hành");
         }
-        if (claimRepository.existsByQuotationId(quotation.getId())) {
+        if (claimRepository.existsByQuotationIdAndStatusIn(quotation.getId(), CLAIM_USED_STATUSES)) {
             throw new ApiException(ErrorCode.WARRANTY_CLAIM_EXISTS,
                     "Hạng mục này đã được gửi yêu cầu bảo hành, mỗi hạng mục chỉ được bảo hành 1 lần");
         }

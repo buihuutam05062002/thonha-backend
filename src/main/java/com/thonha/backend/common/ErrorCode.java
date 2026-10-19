@@ -54,6 +54,8 @@ public enum ErrorCode {
     WARRANTY_EXPIRED(HttpStatus.UNPROCESSABLE_ENTITY, "WARRANTY_EXPIRED", "Yêu cầu đã hết hạn bảo hành"),
     WARRANTY_CLAIM_EXISTS(HttpStatus.CONFLICT, "WARRANTY_CLAIM_EXISTS", "Yêu cầu này đang có phiếu bảo hành chưa hoàn tất"),
     INVALID_SCHEDULE(HttpStatus.BAD_REQUEST, "INVALID_SCHEDULE", "Lịch hẹn không hợp lệ"),
+    CHATBOT_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "CHATBOT_UNAVAILABLE", "Trợ lý AI đang bận, vui lòng thử lại sau ít phút"),
+    CHATBOT_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "CHATBOT_RATE_LIMITED", "Bạn gửi tin nhắn quá nhanh, vui lòng đợi một chút"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "Lỗi hệ thống"),
     DATABASE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "DATABASE_ERROR", "Lỗi cơ sở dữ liệu"),
     EXTERNAL_SERVICE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "EXTERNAL_SERVICE_ERROR", "Lỗi dịch vụ bên ngoài"),

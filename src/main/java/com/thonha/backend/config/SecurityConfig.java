@@ -45,7 +45,8 @@ public class SecurityConfig {
                                 "/ws/**",
                                 "/h2-console/**",
                                 "/actuator/health",
-                                "/error"
+                                "/error",
+                                "/api/v1/chatbot/**"
                         ).permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/worker/**").hasAnyRole("WORKER", "CUSTOMER")
