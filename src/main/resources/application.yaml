@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/thonha?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Ho_Chi_Minh}
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:123456}
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -65,9 +65,9 @@ logging:
 
 sepay:
   # Phải là tài khoản đã liên kết với SePay (SePay chỉ báo biến động số dư của tài khoản đó)
-  bank-account: ${SEPAY_BANK_ACCOUNT:05362218001}
-  bank-name: ${SEPAY_BANK_NAME:TPBank}
-  accountHolder: ${SEPAY_ACCOUNT_HOLDER:LE DANG MINH TRIET}
+  bank-account: ${SEPAY_BANK_ACCOUNT}
+  bank-name: ${SEPAY_BANK_NAME}
+  accountHolder: ${SEPAY_ACCOUNT_HOLDER}
   # Khóa khai báo ở SePay (Webhooks > kiểu chứng thực API Key); để trống thì mọi webhook bị từ chối
   api-key: ${SEPAY_API_KEY:}
   # Tiền tố mã nạp ví của thợ (vd NAP -> NAP15). Nên đặt cùng tiền tố này ở "Cấu trúc mã thanh toán" trong SePay;

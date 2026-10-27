@@ -29,10 +29,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * Phân loại sự cố (điện / nước / máy giặt / ...) từ mô tả và ảnh của khách.
- * Danh mục lấy động từ DB nên admin thêm danh mục mới thì AI tự biết.
- */
 @Service
 public class IncidentClassifierService {
 
@@ -41,7 +37,6 @@ public class IncidentClassifierService {
     private static final Set<String> IMAGE_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
     private static final double MIN_CONFIDENCE = 0.5;
 
-    /** Cạnh dài tối đa của ảnh gửi cho AI, và ngưỡng dung lượng dưới đó thì giữ nguyên ảnh gốc. */
     private static final int AI_MAX_SIDE = 1280;
     private static final int AI_SKIP_BELOW_BYTES = 300_000;
 
@@ -59,7 +54,7 @@ public class IncidentClassifierService {
     public IncidentSuggestionResponse classify(String description, List<MultipartFile> files) {
         String text = description == null ? "" : description.trim();
         List<MultipartFile> images = files == null ? List.of() : files.stream()
-                                                                 .filter(f -> f != null && !f.isEmpty()).toList();
+                .filter(f -> f != null && !f.isEmpty()).toList();
 
         if (text.length() < 5 && images.isEmpty()) {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "Hãy mô tả sự cố hoặc đính kèm ảnh để AI phân tích");
@@ -71,7 +66,7 @@ public class IncidentClassifierService {
         List<GeminiService.InlineImage> inline = new ArrayList<>();
         for (MultipartFile f : images) {
             if (f.getContentType() == null || !IMAGE_TYPES.contains(f.getContentType())) {
-                // Video (mp4) vẫn được đính kèm vào yêu cầu nhưng AI chỉ đọc ảnh
+
                 continue;
             }
             if (f.getSize() > MAX_IMAGE_BYTES) {
@@ -96,11 +91,6 @@ public class IncidentClassifierService {
         return toResponse(out, categories);
     }
 
-    /**
-     * Thu nhỏ ảnh trước khi gửi cho Gemini: ảnh điện thoại 3-5 MB gửi nguyên bản (đã mã hóa base64) làm yêu cầu rất nặng,
-     * dễ quá thời gian chờ. AI chỉ cần ảnh cỡ ~1280px là nhận diện được sự cố. Ảnh gốc vẫn được lưu nguyên cho đơn.
-     * Lỗi bất kỳ (định dạng lạ, WebP...) thì gửi ảnh gốc như cũ.
-     */
     private static GeminiService.InlineImage shrink(String contentType, byte[] data) {
         GeminiService.InlineImage original = new GeminiService.InlineImage(contentType, data);
         if (!"image/jpeg".equals(contentType) && !"image/png".equals(contentType)) return original;
@@ -185,7 +175,6 @@ public class IncidentClassifierService {
                 .summary(trim(out.path("summary").asText(""), 300))
                 .reason(trim(out.path("reason").asText(""), 300));
 
-        // Model trả id lạ hoặc không đủ chắc chắn thì không gợi ý, để khách tự chọn
         if (match != null && confidence >= MIN_CONFIDENCE) {
             b.categoryId(match.getId()).categoryName(match.getName());
         }

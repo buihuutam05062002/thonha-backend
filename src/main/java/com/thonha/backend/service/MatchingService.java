@@ -361,8 +361,6 @@ public class MatchingService {
         if (result == MatchingResult.ACCEPTED) {
             
             workerLoadService.assignJob(log.getWorker().getId());
-
-            
             request.setWorker(log.getWorker());
             request.setStatus(RepairStatus.MATCHED);
             request.setUpdatedAt(LocalDateTime.now());

@@ -14,7 +14,6 @@ import java.util.Optional;
 
 @Repository
 public interface WalletTopUpRepository extends JpaRepository<WalletTopUp, Long> {
-    /** Khóa lệnh nạp khi xử lý webhook để hai webhook trùng nhau không chạy song song. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select t from WalletTopUp t join fetch t.worker where t.id = :id")
     Optional<WalletTopUp> findByIdForUpdate(@Param("id") Long id);

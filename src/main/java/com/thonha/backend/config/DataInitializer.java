@@ -11,7 +11,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-/** Initialize database with default roles and admin user on startup. */
 @Configuration
 public class DataInitializer {
 
